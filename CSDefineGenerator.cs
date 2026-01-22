@@ -44,7 +44,7 @@ namespace excel2json
             for (int i = 0; i < excel.Sheets.Count; i++)
             {
                 DataTable sheet = excel.Sheets[i];
-                sb.Append(_exportSheet(sheet, excludePrefix));
+                sb.Append(_exportSheet(excelName, sheet, excludePrefix));
             }
 
             sb.AppendLine();
@@ -53,7 +53,7 @@ namespace excel2json
             mCode = sb.ToString();
         }
 
-        private string _exportSheet(DataTable sheet, string excludePrefix)
+        private string _exportSheet(string excelName, DataTable sheet, string excludePrefix)
         {
             if (sheet.Columns.Count < 0 || sheet.Rows.Count < 2)
                 return "";
@@ -86,6 +86,9 @@ namespace excel2json
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("public class {0}\r\n{{", sheet.TableName);
             sb.AppendLine();
+
+            // 常量json文件名
+            sb.AppendFormat("\tpublic const string JsonFileName = \"{0}\";", excelName);
 
             foreach (FieldDef field in fieldList)
             {
