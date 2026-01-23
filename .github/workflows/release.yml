@@ -1,0 +1,64 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 触发条件：推送以v开头的标签
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET Framework
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '4.8.x'
+
+    - name: Restore NuGet packages
+      run: nuget restore excel2json.sln
+      shell: pwsh
+
+    - name: Build Solution
+      run: |
+        msbuild excel2json.sln /p:Configuration=Release /p:Platform="Any CPU"
+      shell: pwsh
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/Release/excel2json.exe
+        asset_name: excel2json.exe
+        asset_content_type: application/vnd.microsoft.portable-executable
+
+    - name: Prepare ZIP Archive
+      run: |
+        Compress-Archive -Path "./bin/Release/*" -DestinationPath "./excel2json.zip" -Force
+      shell: pwsh
+
+    - name: Upload ZIP Archive
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./excel2json.zip
+        asset_name: excel2json-${{ github.ref_name }}.zip
+        asset_content_type: application/zip
