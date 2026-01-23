@@ -4,6 +4,23 @@ on:
   push:
     tags:
       - 'v*' # 触发条件：推送以v开头的标签
+  workflow_dispatch:
+    inputs:
+      build_version:
+        description: '版本号 (例如 1.4.0)'
+        required: true
+        default: '1.4.0'
+      build_type:
+        type: choice
+        description: '构建类型'
+        options:
+          - Release
+          - Debug
+        default: 'Release'
+      upload_artifacts:
+        description: '上传构建产物?'
+        required: true
+        default: true
 
 jobs:
   build-and-release:
@@ -22,14 +39,31 @@ jobs:
       run: nuget restore excel2json.sln
       shell: pwsh
 
+    - name: Determine Build Configuration
+      run: |
+        if ("${{ github.event.inputs.build_type }}" -eq "Debug") {
+          echo "BUILD_CONFIGURATION=Debug" | Out-File -FilePath $env:GITHUB_ENV -Append
+        } else {
+          echo "BUILD_CONFIGURATION=Release" | Out-File -FilePath $env:GITHUB_ENV -Append
+        }
+      shell: pwsh
+      if: github.event_name == 'workflow_dispatch'
+
+    - name: Use tag-based config for tag pushes
+      run: |
+        echo "BUILD_CONFIGURATION=Release" | Out-File -FilePath $env:GITHUB_ENV -Append
+      shell: pwsh
+      if: github.event_name == 'push'
+
     - name: Build Solution
       run: |
-        msbuild excel2json.sln /p:Configuration=Release /p:Platform="Any CPU"
+        msbuild excel2json.sln /p:Configuration=${{ env.BUILD_CONFIGURATION }} /p:Platform="Any CPU"
       shell: pwsh
 
-    - name: Create Release
-      id: create_release
+    - name: Create Release (only for tag push)
+      id: create_release_for_tag
       uses: actions/create-release@v1
+      if: github.event_name == 'push'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -38,27 +72,70 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload Release Assets
-      uses: actions/upload-release-asset@v1
+    - name: Create Release (for manual dispatch)
+      id: create_release_manual
+      uses: actions/create-release@v1
+      if: github.event_name == 'workflow_dispatch' && inputs.upload_artifacts == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        tag_name: v${{ github.event.inputs.build_version }}
+        release_name: Manual Release v${{ github.event.inputs.build_version }}
+        draft: true
+        prerelease: true
+
+    - name: Upload Release Assets (for tag push)
+      uses: actions/upload-release-asset@v1
+      if: github.event_name == 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release_for_tag.outputs.upload_url }}
         asset_path: ./bin/Release/excel2json.exe
         asset_name: excel2json.exe
         asset_content_type: application/vnd.microsoft.portable-executable
 
-    - name: Prepare ZIP Archive
-      run: |
-        Compress-Archive -Path "./bin/Release/*" -DestinationPath "./excel2json.zip" -Force
-      shell: pwsh
-
-    - name: Upload ZIP Archive
+    - name: Upload Release Assets (for manual dispatch)
       uses: actions/upload-release-asset@v1
+      if: github.event_name == 'workflow_dispatch' && inputs.upload_artifacts == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.create_release_manual.outputs.upload_url }}
+        asset_path: ./bin/${{ env.BUILD_CONFIGURATION }}/excel2json.exe
+        asset_name: excel2json-${{ github.event.inputs.build_type }}.exe
+        asset_content_type: application/vnd.microsoft.portable-executable
+
+    - name: Prepare ZIP Archive (for tag push)
+      run: |
+        Compress-Archive -Path "./bin/Release/*" -DestinationPath "./excel2json.zip" -Force
+      shell: pwsh
+      if: github.event_name == 'push'
+
+    - name: Prepare ZIP Archive (for manual dispatch)
+      run: |
+        Compress-Archive -Path "./bin/${{ env.BUILD_CONFIGURATION }}/*" -DestinationPath "./excel2json-${{ github.event.inputs.build_type }}.zip" -Force
+      shell: pwsh
+      if: github.event_name == 'workflow_dispatch'
+
+    - name: Upload ZIP Archive (for tag push)
+      uses: actions/upload-release-asset@v1
+      if: github.event_name == 'push'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release_for_tag.outputs.upload_url }}
         asset_path: ./excel2json.zip
         asset_name: excel2json-${{ github.ref_name }}.zip
+        asset_content_type: application/zip
+
+    - name: Upload ZIP Archive (for manual dispatch)
+      uses: actions/upload-release-asset@v1
+      if: github.event_name == 'workflow_dispatch' && inputs.upload_artifacts == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release_manual.outputs.upload_url }}
+        asset_path: ./excel2json-${{ github.event.inputs.build_type }}.zip
+        asset_name: excel2json-${{ github.event.inputs.build_type }}-v${{ github.event.inputs.build_version }}.zip
         asset_content_type: application/zip
