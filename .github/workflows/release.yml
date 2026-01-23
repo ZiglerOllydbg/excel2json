@@ -63,7 +63,7 @@ jobs:
 
     - name: Create Release (only for tag push)
       id: create_release_for_tag
-      uses: actions/create-release@v2.0.1  # 修改为具体版本号
+      uses: actions/create-release@v1  # 修改为具体版本号
       if: github.event_name == 'push'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,7 +75,7 @@ jobs:
 
     - name: Create Release (for manual dispatch)
       id: create_release_manual
-      uses: actions/create-release@v2.0.1  # 修改为具体版本号
+      uses: actions/create-release@v1  # 修改为具体版本号
       if: github.event_name == 'workflow_dispatch' && inputs.upload_artifacts == 'true'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
