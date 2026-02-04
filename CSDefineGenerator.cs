@@ -77,7 +77,9 @@ namespace excel2json
                 FieldDef field;
                 field.name = column.ToString();
                 field.type = typeRow[column].ToString();
-                field.comment = commentRow[column].ToString();
+                field.comment = commentRow[column].ToString()
+                                    .Replace("\r", "")
+                                    .Replace("\n", "");
 
                 fieldList.Add(field);
             }
@@ -89,6 +91,7 @@ namespace excel2json
 
             // 常量json文件名
             sb.AppendFormat("\tpublic const string JsonFileName = \"{0}\";", excelName);
+            sb.AppendLine();
 
             foreach (FieldDef field in fieldList)
             {

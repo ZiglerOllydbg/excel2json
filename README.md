@@ -20,4 +20,9 @@
 ![GUI](./Docs/gui.png)  
 ![CMd](./Docs/cmd.png)  
 
+# 控制台调试参数
+
+```
+--excel InitUnits.xlsx --json InitUnits.json -s --header 3 --encoding utf8-nobom --exclude_prefix # --cell_json -p InitUnits.cs
+```
 
