@@ -40,6 +40,8 @@ namespace excel2json
 
                 if (sheet.Columns.Count > 0 && sheet.Rows.Count > 0)
                     validSheets.Add(sheet);
+
+                // TODO： 记录sheet与excel的关系
             }
 
             var jsonSettings = new JsonSerializerSettings

@@ -39,6 +39,7 @@ namespace excel2json
             sb.AppendLine();
             sb.AppendFormat("// Generate From {0}.xlsx", excelName);
             sb.AppendLine();
+            sb.AppendLine("using UnityEngine.Scripting;");
             sb.AppendLine();
 
             for (int i = 0; i < excel.Sheets.Count; i++)
@@ -86,10 +87,16 @@ namespace excel2json
 
             // export as string
             StringBuilder sb = new StringBuilder();
+            sb.AppendLine("[Preserve]");
             sb.AppendFormat("public class {0}\r\n{{", sheet.TableName);
             sb.AppendLine();
 
+            // 构造函数
+            sb.AppendLine("\tpublic " + sheet.TableName + "() {}");
+            sb.AppendLine();
+
             // 常量json文件名
+            sb.AppendLine("\t[Preserve]");
             sb.AppendFormat("\tpublic const string JsonFileName = \"{0}\";", excelName);
             sb.AppendLine();
 
